@@ -1,6 +1,7 @@
 version: '3.9'
 services:
   api:
+    container_name: webhook-server
     build:
       dockerfile: Dockerfile
       context: .
@@ -8,27 +9,32 @@ services:
     depends_on:
       - redis
     ports:
-      - 8080:8080
+      - 3000:3000
     environment:
       ENV: dev
-      PORT: 8080
+      PORT: 3000
       API_KEY: fee263fe-9eae-48f4-8e2f-23dd77c7cde2
       ADMIN_API_KEY: 8312c08f-2c0b-41b7-8fea-54fc7a907a30
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
+      REDIS_HOST: redis:6379
+      REDIS_PASSWORD: "eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81"
     links:
       - redis
     volumes:
       - .:/opt/app/api
+    networks:
+    - mynetwork 
   redis:
+    container_name: webhook-redis
     image: redis:7.0.5-alpine
+    command: ["redis-server", "--bind", "redis", "--port", "6379", "--requirepass", "eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81"]
     restart: 'always'
     ports:
       - '6379:6379'
-    command: redis-server --save 20 1 --loglevel warning --requirepass eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
     volumes: 
-      - redis:/data
-volumes:
-  redis:
-    driver: local
+      - $PWD/redis-data:/var/lib/redis
+      - $PWD/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+    - mynetwork 
+networks:
+  mynetwork:
+    driver: bridge

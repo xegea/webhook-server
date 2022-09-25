@@ -1,16 +1,16 @@
 all: build run 
 
 build: 
-	go build -o bin/webserver ./cmd 
+	go build -o bin/webserver
 
 test:
 	go test
 
 run:
-	bin/webserver
+	go build -o bin/webserver && ./bin/webserver 
 
 up:
-	docker compose up -d
+	docker compose up --build
 
 cover:
 	go test -cover ./...

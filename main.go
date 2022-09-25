@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-redis/redis"
 	"github.com/xegea/webhook_server/pkg/config"
 	"github.com/xegea/webhook_server/pkg/server"
 )
@@ -20,7 +21,23 @@ func main() {
 		log.Fatalf("unable to load config: %+v", err)
 	}
 
-	svr := server.NewServer(*cfg)
+	client := redis.NewClient(&redis.Options{
+		Addr:     cfg.RedisHost,
+		Password: cfg.RedisPassword,
+		DB:       0,
+	})
+
+	pong, err := client.Ping().Result()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(pong)
+
+	svr := server.NewServer(
+		*cfg,
+		*client,
+	)
+
 	fmt.Printf("Server listening on port: %v\n", cfg.Port)
 	log.Fatal(http.ListenAndServe(":"+cfg.Port, svr))
 }

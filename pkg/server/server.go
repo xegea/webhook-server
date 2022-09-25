@@ -3,16 +3,19 @@ package server
 import (
 	"net/http"
 
+	"github.com/go-redis/redis"
 	"github.com/xegea/webhook_server/pkg/config"
 )
 
 type Server struct {
 	Config config.Config
+	Client redis.Client
 }
 
-func NewServer(cfg config.Config) Server {
+func NewServer(cfg config.Config, client redis.Client) Server {
 	svr := Server{
 		Config: cfg,
+		Client: client,
 	}
 	return svr
 }

@@ -27,5 +27,9 @@ docker compose up
 #Interactive session to webhook_server-api
 docker container run -i -t --rm  webhook_server-api sh
 
+#Redis interactive session to webhook_server-redis-1
+winpty docker exec -it webhook_server-redis-1 redis-cli -a <password>
 
+#or connect to Redis using
+redis-cli -h 127.0.0.1 -p 6379 -a <password>
 
