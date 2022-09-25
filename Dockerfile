@@ -11,12 +11,13 @@ COPY . ./
 
 RUN go build -o /webhook_server
 
-# FROM gcr.io/distroless/base-debian10
+FROM alpine as prod
 
-# WORKDIR /
+WORKDIR /
 
-# COPY --from=build /webhook_server /webhook_server
+COPY --from=build webhook_server /app/webhook_server
+COPY --from=build /app /app
 
 EXPOSE 8080
 
-CMD [ "/webhook_server" ]
+CMD [ "/app/webhook_server", "-env=/app/.env" ]

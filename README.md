@@ -18,6 +18,14 @@ or run if I'm in Windows (https://stackoverflow.com/a/50483923/2147883):
 winpty docker exec -it test-redis redis-cli
 
 
-To run the Dockerfile
-docker build --tag webhook_server-api .
+#To run the Dockerfile
+docker image build --tag webhook_server-api .
+
+#Execute docker compose
+docker compose up 
+
+#Interactive session to webhook_server-api
+docker container run -i -t --rm  webhook_server-api sh
+
+
 

@@ -15,9 +15,9 @@ type Config struct {
 	Port        string
 }
 
-func LoadConfig() (*Config, error) {
+func LoadConfig(env *string) (*Config, error) {
 
-	err := godotenv.Load(".env")
+	err := godotenv.Load(*env)
 	if err != nil {
 		log.Fatalf("Error loading .env file")
 	}
