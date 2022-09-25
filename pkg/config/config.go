@@ -45,7 +45,7 @@ func LoadConfig(env *string) (*Config, error) {
 
 	redisPassword := os.Getenv("REDIS_PASSWORD")
 	if redisPassword == "" {
-		return nil, fmt.Errorf("REDIS_PASSWORD cannot be empty")
+		log.Println("REDIS_PASSWORD empty")
 	}
 
 	return &Config{

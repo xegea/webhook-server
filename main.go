@@ -31,7 +31,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(pong)
+	fmt.Printf("Redis PING: %v\n", pong)
 
 	svr := server.NewServer(
 		*cfg,
