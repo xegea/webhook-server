@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"flag"
 	"log"
 	"net/http"
 
@@ -10,12 +10,16 @@ import (
 )
 
 func main() {
-	cfg, err := config.LoadConfig()
+
+	env := flag.String("env", ".env", ".env path")
+	flag.Parse()
+
+	cfg, err := config.LoadConfig(env)
 	if err != nil {
 		log.Fatalf("unable to load config: %+v", err)
 	}
 
 	svr := server.NewServer(*cfg)
-	fmt.Printf("Server listening on port: %v\n", cfg.Port)
-	log.Fatal(http.ListenAndServe(cfg.Port, svr))
+	log.Printf("Server listening on port: %v\n", cfg.Port)
+	log.Fatal(http.ListenAndServe(":"+cfg.Port, svr))
 }
