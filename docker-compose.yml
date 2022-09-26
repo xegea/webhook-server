@@ -28,13 +28,11 @@ services:
     image: redis:7.0.5-alpine
     command: ["redis-server", "--bind", "redis", "--port", "6379", "--requirepass", "eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81"]
     restart: 'always'
-    ports:
-      - '6379:6379'
     volumes: 
-      - $PWD/redis-data:/var/lib/redis
-      - $PWD/redis.conf:/usr/local/etc/redis/redis.conf
+      - /redis-data:/var/lib/redis
+      - /redis.conf:/usr/local/etc/redis/redis.conf
     networks:
-    - mynetwork 
+    - mynetwork
 networks:
   mynetwork:
     driver: bridge
