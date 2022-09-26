@@ -3,10 +3,13 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
+	"time"
 
+	"github.com/Jeffail/gabs"
 	"github.com/go-redis/redis"
 	"github.com/google/uuid"
 
@@ -40,25 +43,21 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type Request struct {
-	Url    string        `json:"url,omitempty"`
-	Host   string        `json:"host,omitempty"`
-	Method string        `json:"method,omitempty"`
-	Body   io.ReadCloser `json:"body,omitempty"`
+	Url     string          `json:"url,omitempty"`
+	Host    string          `json:"host,omitempty"`
+	Method  string          `json:"method,omitempty"`
+	Body    any             `json:"body,omitempty"`
+	Headers json.RawMessage `json:"headers,omitempty"`
 }
 
 func (s *Server) PingRequestHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-type", "application/json")
 
-	var req Request = Request{
-		Url:    r.URL.Path,
-		Host:   r.Host,
-		Method: r.Method,
-		Body:   r.Body,
-	}
+	req := parseRequest(r)
 
 	b, err := json.MarshalIndent(req, "", "\t")
 	if err != nil {
-		log.Print(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	fmt.Fprint(w, string(b))
@@ -79,25 +78,20 @@ func (s *Server) GetRequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	val, err := s.Client.Get(token).Result()
 	if err != nil {
-		// Internal server error
-		log.Print(err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	var req Request = Request{
-		Url:    r.URL.Path,
-		Host:   r.Host,
-		Method: r.Method,
-		Body:   r.Body,
-	}
+	req := parseRequest(r)
 
 	err = json.Unmarshal([]byte(val), &req)
 	if err != nil {
-		log.Print(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	b, err := json.MarshalIndent(req, "", "\t")
 	if err != nil {
-		log.Print(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	fmt.Fprint(w, string(b))
@@ -107,20 +101,46 @@ func (s *Server) SaveRequestHandler(w http.ResponseWriter, r *http.Request) {
 	id := uuid.New()
 	fmt.Println(id.String())
 
+	req := parseRequest(r)
+
+	b, err := json.MarshalIndent(req, "", "\t")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	err = s.Client.Set(fmt.Sprint(id), string(b), time.Hour*1).Err()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	fmt.Fprint(w, id)
+}
+
+func parseRequest(r *http.Request) Request {
 	var req Request = Request{
 		Url:    r.URL.Path,
 		Host:   r.Host,
 		Method: r.Method,
-		Body:   r.Body,
 	}
 
-	b, err := json.MarshalIndent(req, "", "\t")
-	if err != nil {
-		panic(err)
+	var row json.RawMessage = []byte(`{`)
+	for h, v := range r.Header {
+		row = append(row, []byte(`"`+h+`":"`+strings.Join(v, ",")+`",`)...)
+	}
+	row = append(row[:len(row)-1], []byte(`}`)...)
+
+	req.Headers = row
+
+	b, _ := ioutil.ReadAll(r.Body)
+
+	if len(b) > 0 && strings.Contains(r.Header.Get("Content-Type"), "application/json") {
+		jsonParsed, err := gabs.ParseJSON(b)
+		if err != nil {
+			panic(err)
+		}
+		b = jsonParsed.EncodeJSON()
 	}
 
-	err = s.Client.Set(fmt.Sprint(id), string(b), 3600).Err()
-	if err != nil {
-		panic(err)
-	}
+	req.Body = string(b)
+	return req
 }
