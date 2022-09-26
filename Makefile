@@ -10,7 +10,7 @@ run:
 	go build -o bin/webserver && ./bin/webserver 
 
 up:
-	docker compose up --build
+	docker compose up --build -d
 
 cover:
 	go test -cover ./...
