@@ -116,7 +116,7 @@ func (s *Server) GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 
 	url, err := s.Client.Get(token).Result()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
