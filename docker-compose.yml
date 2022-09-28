@@ -9,10 +9,10 @@ services:
     depends_on:
       - redis
     ports:
-      - 8080:8080
+      - 3000:3000
     environment:
       ENV: dev
-      PORT: 8080
+      PORT: 3000
       API_KEY: fee263fe-9eae-48f4-8e2f-23dd77c7cde2
       ADMIN_API_KEY: 8312c08f-2c0b-41b7-8fea-54fc7a907a30
       REDIS_HOST: redis:6379

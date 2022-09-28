@@ -17,6 +17,6 @@ WORKDIR /
 
 COPY --from=build webhook_server /app/webhook_server
 
-EXPOSE 8080
+EXPOSE 3000
 
 CMD [ "/app/webhook_server", "-env=/app/.env" ]
