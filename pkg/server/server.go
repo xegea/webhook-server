@@ -3,7 +3,8 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
+
 	"log"
 	"net/http"
 	"strings"
@@ -208,7 +209,7 @@ func parseRequest(r *http.Request) Request {
 
 	req.Headers = row
 
-	b, _ := ioutil.ReadAll(r.Body)
+	b, _ := io.ReadAll(r.Body)
 
 	if len(b) > 0 && strings.Contains(r.Header.Get("Content-Type"), "application/json") {
 		jsonParsed, err := gabs.ParseJSON(b)
