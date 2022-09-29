@@ -18,14 +18,14 @@ import (
 )
 
 type Server struct {
-	Config config.Config
-	Client redis.Client
+	Config   config.Config
+	RedisCli redis.Client
 }
 
 func NewServer(cfg config.Config, client redis.Client) Server {
 	svr := Server{
-		Config: cfg,
-		Client: client,
+		Config:   cfg,
+		RedisCli: client,
 	}
 	return svr
 }
@@ -51,6 +51,8 @@ type HttpResponse struct {
 
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.URL.Path {
+	case "/ping":
+		s.PingRequestHandler(w, r)
 	case "/token":
 		switch r.Method {
 		case "POST":
@@ -58,15 +60,37 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case "GET":
 			s.GetTokenHandler(w, r)
 		}
-	case "/ping":
-		s.PingRequestHandler(w, r)
+	case "/pop":
+		s.PopRequestHandler(w, r)
 	case "/get":
 		s.GetRequestHandler(w, r)
 	case "/webhook":
 		s.SaveRequestHandler(w, r)
 	default:
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		{
+			token := strings.Split(r.URL.Path, "/")[1]
+			_, err := uuid.Parse(token)
+			if err == nil {
+				s.PushRequestHandler(w, r)
+				return
+			}
+
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		}
 	}
+}
+
+func (s *Server) PingRequestHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+
+	req := parseRequest(r)
+
+	b, err := json.MarshalIndent(req, "", "\t")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	fmt.Fprint(w, string(b))
 }
 
 func (s *Server) CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,7 +114,7 @@ func (s *Server) CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.Client.Set(fmt.Sprint(id), *b.Url, time.Hour*1).Err()
+	err = s.RedisCli.Set("token:"+fmt.Sprint(id), *b.Url, time.Hour*1).Err()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -115,7 +139,7 @@ func (s *Server) GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	url, err := s.Client.Get(token).Result()
+	url, err := s.RedisCli.Get("token:" + token).Result()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
@@ -129,17 +153,26 @@ func (s *Server) GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(res)
 }
 
-func (s *Server) PingRequestHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", "application/json")
+func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 
-	req := parseRequest(r)
-
-	b, err := json.MarshalIndent(req, "", "\t")
+	path := strings.Split(r.URL.Path, "/")
+	token := path[1]
+	_, err := uuid.Parse(token)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
-	fmt.Fprint(w, string(b))
+	_, err = s.RedisCli.LPush("request:"+token, strings.Join(path[2:], "/")).Result()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+}
+
+func (s *Server) PopRequestHandler(w http.ResponseWriter, r *http.Request) {
+
 }
 
 func (s *Server) GetRequestHandler(w http.ResponseWriter, r *http.Request) {
@@ -154,7 +187,7 @@ func (s *Server) GetRequestHandler(w http.ResponseWriter, r *http.Request) {
 		log.Print(err)
 	}
 
-	val, err := s.Client.Get(token).Result()
+	val, err := s.RedisCli.Get(token).Result()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -186,7 +219,7 @@ func (s *Server) SaveRequestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	err = s.Client.Set(fmt.Sprint(id), string(b), time.Hour*1).Err()
+	err = s.RedisCli.Set(fmt.Sprint(id), string(b), time.Hour*1).Err()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

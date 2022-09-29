@@ -21,13 +21,13 @@ func main() {
 		log.Fatalf("unable to load config: %+v", err)
 	}
 
-	client := redis.NewClient(&redis.Options{
+	redisCli := redis.NewClient(&redis.Options{
 		Addr:     cfg.RedisHost,
 		Password: cfg.RedisPassword,
 		DB:       0,
 	})
 
-	pong, err := client.Ping().Result()
+	pong, err := redisCli.Ping().Result()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -35,7 +35,7 @@ func main() {
 
 	svr := server.NewServer(
 		*cfg,
-		*client,
+		*redisCli,
 	)
 
 	fmt.Printf("Server listening on port: %v\n", cfg.Port)
