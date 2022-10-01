@@ -12,6 +12,9 @@ run:
 up:
 	docker compose up --build -d
 
+down:
+	docker compose down
+
 cover:
 	go test -cover ./...
 

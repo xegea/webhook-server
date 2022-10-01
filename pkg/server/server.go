@@ -39,22 +39,22 @@ type Request struct {
 }
 
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	resource := strings.Split(r.URL.Path, "/")[1]
-	switch resource {
+	resourcePath := "/" + strings.Split(r.URL.Path, "/")[1]
+	switch resourcePath {
 	case "/ping":
 		s.PingRequestHandler(w, r)
 	case "/get":
 		s.GetRequestHandler(w, r)
 	case "/webhook":
 		s.SaveRequestHandler(w, r)
-	case "url":
+	case "/url":
 		switch r.Method {
 		case "POST":
 			s.CreateTokenHandler(w, r)
 		case "GET":
 			s.GetTokenHandler(w, r)
 		}
-	case "pop":
+	case "/pop":
 		{
 			token := strings.Split(r.URL.Path, "/")[2]
 			_, err := uuid.Parse(token)
@@ -154,6 +154,9 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.RedisCli.Expire("request:"+token, 1*time.Hour)
+
+	// TODO wait for the response performed in the client
+	// read response:token from redis in a loop
 }
 
 func (s *Server) PopRequestHandler(w http.ResponseWriter, r *http.Request) {
