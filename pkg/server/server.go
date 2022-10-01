@@ -152,6 +152,8 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	s.RedisCli.Expire("request:"+token, time.Hour*1)
 }
 
 func (s *Server) PopRequestHandler(w http.ResponseWriter, r *http.Request) {
@@ -167,7 +169,7 @@ func (s *Server) PopRequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	urlpath, err := s.RedisCli.LPop("request:" + token).Result()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
