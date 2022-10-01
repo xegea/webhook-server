@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-
 	"log"
+
 	"net/http"
 	"strings"
 	"time"
@@ -38,59 +38,43 @@ type Request struct {
 	Headers json.RawMessage `json:"headers,omitempty"`
 }
 
-type ErrorResponse struct {
-	Code int
-	Desc string
-}
-
-type HttpResponse struct {
-	Data    json.RawMessage
-	Error   ErrorResponse
-	Success bool
-}
-
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	switch r.URL.Path {
+	resource := strings.Split(r.URL.Path, "/")[1]
+	switch resource {
 	case "/ping":
 		s.PingRequestHandler(w, r)
-	case "/token":
+	case "/get":
+		s.GetRequestHandler(w, r)
+	case "/webhook":
+		s.SaveRequestHandler(w, r)
+	case "url":
 		switch r.Method {
 		case "POST":
 			s.CreateTokenHandler(w, r)
 		case "GET":
 			s.GetTokenHandler(w, r)
 		}
-	case "/pop":
-		s.PopRequestHandler(w, r)
-	case "/get":
-		s.GetRequestHandler(w, r)
-	case "/webhook":
-		s.SaveRequestHandler(w, r)
+	case "pop":
+		{
+			token := strings.Split(r.URL.Path, "/")[2]
+			_, err := uuid.Parse(token)
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+				return
+			}
+			s.PopRequestHandler(w, r)
+		}
 	default:
 		{
 			token := strings.Split(r.URL.Path, "/")[1]
 			_, err := uuid.Parse(token)
-			if err == nil {
-				s.PushRequestHandler(w, r)
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
 				return
 			}
-
-			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			s.PushRequestHandler(w, r)
 		}
 	}
-}
-
-func (s *Server) PingRequestHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", "application/json")
-
-	req := parseRequest(r)
-
-	b, err := json.MarshalIndent(req, "", "\t")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-
-	fmt.Fprint(w, string(b))
 }
 
 func (s *Server) CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
@@ -168,11 +152,31 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
 }
 
 func (s *Server) PopRequestHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
 
+	path := strings.Split(r.URL.Path, "/")
+	token := path[2]
+	_, err := uuid.Parse(token)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	urlpath, err := s.RedisCli.LPop("request:" + token).Result()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	res := struct {
+		Path string `json:"path"`
+	}{}
+	res.Path = urlpath
+
+	json.NewEncoder(w).Encode(res)
 }
 
 func (s *Server) GetRequestHandler(w http.ResponseWriter, r *http.Request) {
@@ -227,6 +231,19 @@ func (s *Server) SaveRequestHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, id)
 }
 
+func (s *Server) PingRequestHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "application/json")
+
+	req := parseRequest(r)
+
+	b, err := json.MarshalIndent(req, "", "\t")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	fmt.Fprint(w, string(b))
+}
+
 func parseRequest(r *http.Request) Request {
 	var req Request = Request{
 		Url:    r.URL.Path,
@@ -255,13 +272,3 @@ func parseRequest(r *http.Request) Request {
 	req.Body = string(b)
 	return req
 }
-
-// func jsonError(err error, code int) HttpResponse {
-// 	return HttpResponse{
-// 		Error: ErrorResponse{
-// 			Code: code,
-// 			Desc: err.Error(),
-// 		},
-// 		Success: false,
-// 	}
-// }
