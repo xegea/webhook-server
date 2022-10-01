@@ -98,7 +98,7 @@ func (s *Server) CreateTokenHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = s.RedisCli.Set("token:"+fmt.Sprint(id), *b.Url, time.Hour*1).Err()
+	err = s.RedisCli.Set("token:"+fmt.Sprint(id), *b.Url, 1*time.Hour).Err()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -153,7 +153,7 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.RedisCli.Expire("request:"+token, time.Hour*1)
+	s.RedisCli.Expire("request:"+token, 1*time.Hour)
 }
 
 func (s *Server) PopRequestHandler(w http.ResponseWriter, r *http.Request) {
@@ -225,7 +225,7 @@ func (s *Server) SaveRequestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	err = s.RedisCli.Set(fmt.Sprint(id), string(b), time.Hour*1).Err()
+	err = s.RedisCli.Set(fmt.Sprint(id), string(b), 1*time.Hour).Err()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
