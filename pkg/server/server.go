@@ -64,6 +64,16 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			}
 			s.PopRequestHandler(w, r)
 		}
+	case "/resp":
+		{
+			token := strings.Split(r.URL.Path, "/")[2]
+			_, err := uuid.Parse(token)
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+				return
+			}
+			s.SaveResponseHandler(w, r)
+		}
 	default:
 		{
 			token := strings.Split(r.URL.Path, "/")[1]
@@ -138,6 +148,7 @@ func (s *Server) GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-type", "text/html")
 
 	path := strings.Split(r.URL.Path, "/")
 	token := path[1]
@@ -162,8 +173,28 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	s.RedisCli.Expire("request:"+token, 1*time.Hour)
 
-	// TODO wait for the response performed in the client
-	// read response:token from redis in a loop
+	timer := time.NewTimer(time.Duration(5000) * time.Second)
+
+	fmt.Println()
+	fmt.Print("waiting for response...")
+	respCh := make(chan string)
+
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			res, err := s.RedisCli.LPop("response:" + token).Result()
+			if err != nil {
+				fmt.Print(".")
+			}
+			respCh <- res
+		}
+	}()
+	select {
+	case <-timer.C:
+		http.Error(w, err.Error(), http.StatusGatewayTimeout)
+	case res := <-respCh:
+		fmt.Fprint(w, res)
+	}
 }
 
 func (s *Server) PopRequestHandler(w http.ResponseWriter, r *http.Request) {
@@ -190,6 +221,29 @@ func (s *Server) PopRequestHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(request)
+}
+
+func (s *Server) SaveResponseHandler(w http.ResponseWriter, r *http.Request) {
+
+	token := strings.Split(r.URL.Path, "/")[2]
+	_, err := uuid.Parse(token)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	b, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	_, err = s.RedisCli.LPush("response:"+token, b).Result()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	s.RedisCli.Expire("request:"+token, 1*time.Hour)
 }
 
 func (s *Server) GetRequestHandler(w http.ResponseWriter, r *http.Request) {
