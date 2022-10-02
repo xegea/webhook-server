@@ -147,7 +147,14 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = s.RedisCli.LPush("request:"+token, strings.Join(path[2:], "/")).Result()
+	req := parseRequest(r)
+
+	b, err := json.Marshal(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	_, err = s.RedisCli.LPush("request:"+token, b).Result()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -170,18 +177,19 @@ func (s *Server) PopRequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	urlpath, err := s.RedisCli.LPop("request:" + token).Result()
+	req, err := s.RedisCli.LPop("request:" + token).Result()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
 
-	res := struct {
-		Path string `json:"path"`
-	}{}
-	res.Path = urlpath
+	var request Request
+	err = json.Unmarshal([]byte(req), &request)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
 
-	json.NewEncoder(w).Encode(res)
+	json.NewEncoder(w).Encode(request)
 }
 
 func (s *Server) GetRequestHandler(w http.ResponseWriter, r *http.Request) {
