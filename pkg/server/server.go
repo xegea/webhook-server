@@ -256,13 +256,15 @@ func parseRequest(r *http.Request) Request {
 		Method: r.Method,
 	}
 
-	var row json.RawMessage = []byte(`{`)
+	row := make(map[string]string)
 	for h, v := range r.Header {
-		row = append(row, []byte(`"`+h+`":"`+strings.Join(v, ",")+`",`)...)
+		row[h] = strings.Join(v, ",")
 	}
-	row = append(row[:len(row)-1], []byte(`}`)...)
-
-	req.Headers = row
+	jsonData, err := json.Marshal(row)
+	if err != nil {
+		fmt.Printf("Error: %s", err.Error())
+	}
+	req.Headers = jsonData
 
 	b, _ := io.ReadAll(r.Body)
 
