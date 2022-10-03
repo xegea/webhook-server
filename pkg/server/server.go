@@ -148,8 +148,6 @@ func (s *Server) GetTokenHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-type", "text/html")
-
 	path := strings.Split(r.URL.Path, "/")
 	token := path[1]
 	_, err := uuid.Parse(token)
@@ -182,7 +180,7 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
-			res, err := s.RedisCli.LPop("response:" + token).Result()
+			res, err := s.RedisCli.RPop("response:" + token).Result()
 			if err != nil {
 				fmt.Print(".")
 			}
@@ -193,7 +191,27 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 	case <-timer.C:
 		http.Error(w, err.Error(), http.StatusGatewayTimeout)
 	case res := <-respCh:
-		fmt.Fprint(w, res)
+		{
+			response := struct {
+				Body    []byte              `json:"body"`
+				Headers map[string][]string `json:"headers"`
+			}{}
+			err = json.Unmarshal([]byte(res), &response)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			fmt.Println("Content-Type", response.Headers["Content-Type"][0])
+			w.Header().Set("Content-type", response.Headers["Content-Type"][0])
+
+			if strings.Contains(response.Headers["Content-Type"][0], "text/html") ||
+				strings.Contains(response.Headers["Content-Type"][0], "text/javascript") ||
+				strings.Contains(response.Headers["Content-Type"][0], "text/css") {
+				fmt.Fprint(w, string(response.Body))
+			} else {
+				fmt.Fprint(w, response.Body)
+			}
+		}
 	}
 }
 
