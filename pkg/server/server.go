@@ -31,6 +31,7 @@ func NewServer(cfg config.Config, client redis.Client) Server {
 }
 
 type Request struct {
+	Id      string          `json:"id,omitempty"`
 	Url     string          `json:"url,omitempty"`
 	Host    string          `json:"host,omitempty"`
 	Method  string          `json:"method,omitempty"`
@@ -66,7 +67,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	case "/resp":
 		{
-			token := strings.Split(r.URL.Path, "/")[2]
+			token := strings.Split(strings.Split(r.URL.Path, "/")[2], "~")[0]
 			_, err := uuid.Parse(token)
 			if err != nil {
 				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
@@ -163,7 +164,10 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	_, err = s.RedisCli.LPush("request:"+token, b).Result()
+	reqId := strings.Split(uuid.New().String(), "-")[0]
+	resId := reqId
+
+	_, err = s.RedisCli.HSet("request:"+token, reqId, b).Result()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -171,7 +175,7 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	s.RedisCli.Expire("request:"+token, 1*time.Hour)
 
-	timer := time.NewTimer(time.Duration(5000) * time.Second)
+	timer := time.NewTimer(time.Duration(5) * time.Second)
 
 	fmt.Println()
 	fmt.Print("waiting for response...")
@@ -179,10 +183,11 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 
 	go func() {
 		for {
-			time.Sleep(1 * time.Second)
-			res, err := s.RedisCli.RPop("response:" + token).Result()
+			time.Sleep(100 * time.Millisecond)
+			res, err := s.RedisCli.HGet("response:"+token, resId).Result()
 			if err != nil {
 				fmt.Print(".")
+				continue
 			}
 			respCh <- res
 		}
@@ -204,9 +209,9 @@ func (s *Server) PushRequestHandler(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Content-Type", response.Headers["Content-Type"][0])
 			w.Header().Set("Content-type", response.Headers["Content-Type"][0])
 
-			if strings.Contains(response.Headers["Content-Type"][0], "text/html") ||
-				strings.Contains(response.Headers["Content-Type"][0], "text/javascript") ||
-				strings.Contains(response.Headers["Content-Type"][0], "text/css") {
+			if strings.Contains(response.Headers["Content-Type"][0], "html") ||
+				strings.Contains(response.Headers["Content-Type"][0], "javascript") ||
+				strings.Contains(response.Headers["Content-Type"][0], "css") {
 				fmt.Fprint(w, string(response.Body))
 			} else {
 				fmt.Fprint(w, response.Body)
@@ -226,24 +231,39 @@ func (s *Server) PopRequestHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req, err := s.RedisCli.LPop("request:" + token).Result()
+	reqs, err := s.RedisCli.HGetAll("request:" + token).Result()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-
-	var request Request
-	err = json.Unmarshal([]byte(req), &request)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if len(reqs) == 0 {
+		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+		return
 	}
 
-	json.NewEncoder(w).Encode(request)
+	var requests []Request
+	var ids []string
+	for id, req := range reqs {
+		var request Request
+		err = json.Unmarshal([]byte(req), &request)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+		request.Id = id
+		requests = append(requests, request)
+		ids = append(ids, id)
+	}
+
+	s.RedisCli.HDel("request:"+token, ids...)
+
+	json.NewEncoder(w).Encode(requests)
 }
 
 func (s *Server) SaveResponseHandler(w http.ResponseWriter, r *http.Request) {
 
-	token := strings.Split(r.URL.Path, "/")[2]
+	sId := strings.Split(strings.Split(r.URL.Path, "/")[2], "~")
+	token, respId := sId[0], sId[1]
+
 	_, err := uuid.Parse(token)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -255,7 +275,7 @@ func (s *Server) SaveResponseHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	_, err = s.RedisCli.LPush("response:"+token, b).Result()
+	_, err = s.RedisCli.HSet("response:"+token, respId, b).Result()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
