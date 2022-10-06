@@ -16,7 +16,8 @@ FROM alpine as prod
 WORKDIR /
 
 COPY --from=build webhook_server /app/webhook_server
+COPY --from=build /app/.env /app/
 
-EXPOSE 3000
+EXPOSE 8080
 
 CMD [ "/app/webhook_server", "-env=/app/.env" ]
