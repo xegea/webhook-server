@@ -1,6 +1,6 @@
 # webhook-server
 
-<a href="https://github.com/xegea/webhook_server">webhook_server</a> works together with <a href="https://github.com/xegea/webhook_client">webhook-client</a> to put your localhost in the Internet.
+<a href="https://github.com/xegea/webhook_server">webhook_server</a> works together with <a href="https://github.com/xegea/webhook_client">webhook-client</a> to put your localhost on the Internet.
 
 # Example:
 
