@@ -1,6 +1,6 @@
 # webhook-server
 
-To put your localhost in the Internet check the project <a href="https://github.com/xegea/webhook_client">webhook-client</a>
+<a href="https://github.com/xegea/webhook_server">webhook_server</a> works together with <a href="https://github.com/xegea/webhook_client">webhook-client</a> to put your localhost in the Internet.
 
 # Example:
 
@@ -19,7 +19,7 @@ Then, when you access to https://webhook-server.fly.dev/326e6580-e380-41a0-8c19-
 
 
 # How it works
-<a href="https://github.com/xegea/webhook_server">webhook_server</a> is a public site using RedisDB as a database.
+<a href="https://github.com/xegea/webhook_server">webhook_server</a> is a public site (https://webhook-server.fly.dev/) using RedisDB as a database.
 
 <a href="https://github.com/xegea/webhook_client">webhook-client</a> is executed locally in your computer.
 
