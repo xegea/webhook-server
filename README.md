@@ -4,15 +4,12 @@
 
 # Example:
 
+```console
 $ webhook-client -url=http://localhost:8080
-
-<code>Congratulations!!!</code>
-
-<code>You have access to: http://localhost:8080/<your_path></code>
-
-<code>using the next url: https://webhook-server.fly.dev/326e6580-e380-41a0-8c19-786a3e4f7fd4/<your_path></code>
-
-
+Congratulations!!!
+You have access to: http://localhost:8080/<your_path>
+using the next url: https://webhook-server.fly.dev/326e6580-e380-41a0-8c19-786a3e4f7fd4/<your_path>
+```
 
 Then, when you access to https://webhook-server.fly.dev/326e6580-e380-41a0-8c19-786a3e4f7fd4, you will see the content in http://localhost:8080
 
