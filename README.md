@@ -22,7 +22,7 @@ Then, when you access to https://webhook-server.fly.dev/326e6580-e380-41a0-8c19-
 
 When [webhook-client][] starts, connects to the [webhook-server][] to create a token. This token (uuid) will be used in all the communications between them.
 
-Every time the [webhook-server][] receives a request, all the request info is stored the DB. In the other side, [webhook-client][] will be checking if there is any request pending to process. Once the [webhook-client][] receives the request it will process using the local url (ie. http://localhost:8080) and it will send back the response to the [webhook-server][].
+Every time the [webhook-server][] receives a request, all the request info is stored in the DB. In the other side, [webhook-client][] will be checking if there is any request pending to process. Once the [webhook-client][] receives the request it will process using the local url (ie. http://localhost:8080) and it will send back the response to the [webhook-server][].
 
 # Use cases
 - The common use case is during the development process to test third party providers (payments, shipping platforms, ...) that use webhooks to send a callback.
