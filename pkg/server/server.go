@@ -42,8 +42,6 @@ type Request struct {
 func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resourcePath := "/" + strings.Split(r.URL.Path, "/")[1]
 	switch resourcePath {
-	case "/ping":
-		s.PingRequestHandler(w, r)
 	case "/get":
 		s.GetRequestHandler(w, r)
 	case "/webhook":
@@ -80,7 +78,7 @@ func (s Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			token := strings.Split(r.URL.Path, "/")[1]
 			_, err := uuid.Parse(token)
 			if err != nil {
-				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+				s.PingRequestHandler(w, r)
 				return
 			}
 			s.PushRequestHandler(w, r)
