@@ -15,6 +15,9 @@ up:
 down:
 	docker compose down
 
+image:
+	docker image build -t xavieregea/webhook-server:1.0.2 .
+
 cover:
 	go test -cover ./...
 
