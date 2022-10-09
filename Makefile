@@ -18,6 +18,9 @@ down:
 image:
 	docker image build -t xavieregea/webhook-server:1.0.2 .
 
+container:
+	docker container run --name webhook-server xavieregea/webhook-server:1.0.2
+
 cover:
 	go test -cover ./...
 

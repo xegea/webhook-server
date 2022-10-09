@@ -2,21 +2,20 @@
 
 FROM golang:1.19 as build
 
-WORKDIR /app
+WORKDIR /usr/src/webhook-server
 
 COPY go.mod go.sum ./
-RUN go mod download
+RUN go mod download && go mod verify
 
-COPY . ./
+COPY . .
+RUN go build -v -o /usr/local/bin/webhook-server/ 
 
-RUN go build -o /webhook_server
 
-FROM alpine as prod
-
+FROM alpine:latest as prod
+RUN apk --no-cache add ca-certificates
 WORKDIR /
-
-COPY --from=build webhook_server /app/webhook_server
-COPY --from=build /app/.env /app/
+COPY --from=build /usr/local/bin /app
+COPY --from=build /usr/src/webhook-server/.env /app/
 
 EXPOSE 8080
 
